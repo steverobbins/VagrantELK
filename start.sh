@@ -1,6 +1,7 @@
 #!/bin/bash
 
-~/app/elasticsearch/bin/elasticsearch > /dev/null 2>&1 &
-~/app/kibana/bin/kibana > /dev/null 2>&1 &
-~/app/logstash/bin/logstash -f ~/app/logstash.conf > /dev/null 2>&1 &
-
+~/app/elasticsearch/bin/elasticsearch > ~/app/log/elasticsearch.log 2>&1 &
+sleep 5
+~/app/kibana/bin/kibana > ~/app/log/kibana.log 2>&1 &
+sleep 5
+~/app/logstash/bin/logstash -f /vagrant/logstash-apache.conf > ~/app/log/logstash.log 2>&1 &

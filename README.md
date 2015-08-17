@@ -1,6 +1,8 @@
 Vagrant Box for Elasticsearch, Kibana, and Logstash
 ===
 
+![screenshot](https://i.imgur.com/YcUS7ff.png)
+
 # Installation
 
 ```

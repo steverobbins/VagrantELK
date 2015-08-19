@@ -3,33 +3,45 @@
 apt-get -y update
 apt-get -y install default-jre
 
-cd ~
-mkdir -p app/log
-
-curl -o logstash-1.5.3.tar.gz https://download.elastic.co/logstash/logstash/logstash-1.5.3.tar.gz
-curl -o elasticsearch-1.7.1.tar.gz https://download.elastic.co/elasticsearch/elasticsearch/elasticsearch-1.7.1.tar.gz
-curl -o kibana-4.1.1-linux-x64.tar.gz https://download.elastic.co/kibana/kibana/kibana-4.1.1-linux-x64.tar.gz
-
-tar -zxvf logstash-1.5.3.tar.gz
-tar -zxvf elasticsearch-1.7.1.tar.gz
-tar -zxvf kibana-4.1.1-linux-x64.tar.gz
-
-rm -f logstash-1.5.3.tar.gz
-rm -f elasticsearch-1.7.1.tar.gz
-rm -f kibana-4.1.1-linux-x64.tar.gz
-
-mv logstash-1.5.3 app/logstash
-mv elasticsearch-1.7.1 app/elasticsearch
-mv kibana-4.1.1-linux-x64 app/kibana
-
-~/app/elasticsearch/bin/plugin -i elasticsearch/license/latest
-~/app/elasticsearch/bin/plugin -i elasticsearch/shield/latest
-~/app/elasticsearch/bin/shield/esusers useradd admin -r admin -p batman
-~/app/elasticsearch/bin/shield/esusers useradd logstash -r logstash -p batman
-~/app/elasticsearch/bin/shield/esusers useradd kibana -r kibana4 -p batman
-
+# Elasticsearch
+wget -O - http://packages.elasticsearch.org/GPG-KEY-elasticsearch | apt-key add -
+echo 'deb http://packages.elasticsearch.org/elasticsearch/1.4/debian stable main' | tee /etc/apt/sources.list.d/elasticsearch.list
+apt-get -y update
+apt-get -y install elasticsearch
 echo '
-kibana_elasticsearch_username: kibana
-kibana_elasticsearch_password: batman' >> ~/app/kibana/config/kibana.yml
+network.host: localhost' >> /etc/elasticsearch/elasticsearch.yml
+update-rc.d elasticsearch defaults 95 10
+service elasticsearch restart
 
-/vagrant/start.sh
+# Kibana
+cd ~
+curl -o kibana-4.1.1-linux-x64.tar.gz https://download.elastic.co/kibana/kibana/kibana-4.1.1-linux-x64.tar.gz
+tar -zxvf kibana-4.1.1-linux-x64.tar.gz
+rm -f kibana-4.1.1-linux-x64.tar.gz
+mv kibana-4.1.1-linux-x64 kibana
+perl -pi -e 's/host: "0\.0\.0\.0"/host: "localhost"/g' kibana/config/kibana.yml
+mkdir -p /opt/kibana
+cp -R ~/kibana/* /opt/kibana/
+rm -rf ~/kibana
+cat /vagrant/kibana/service > /etc/init.d/kibana4
+chmod +x /etc/init.d/kibana4
+update-rc.d kibana4 defaults 96 9
+service kibana4 start
+
+# Nginx (Kibana forward)
+apt-get -y install nginx apache2-utils
+htpasswd -bc /etc/nginx/htpasswd.users kibana secretpassword
+cat /vagrant/nginx/kibana > /etc/nginx/sites-available/kibana
+ln -s /etc/nginx/sites-available/kibana /etc/nginx/sites-enabled/kibana
+unlink /etc/nginx/sites-enabled/default 
+service nginx restart
+
+# Logstash
+echo 'deb http://packages.elasticsearch.org/logstash/1.5/debian stable main' | tee /etc/apt/sources.list.d/logstash.list
+apt-get -y update
+apt-get -y install logstash
+
+ln -s /vagrant/logstash/syslog.conf /etc/logstash/conf.d/10-syslog.conf
+ln -s /vagrant/logstash/apache-access.conf /etc/logstash/conf.d/20-apache-access.conf
+service logstash restart
+update-rc.d logstash defaults 97 8

@@ -41,7 +41,18 @@ echo 'deb http://packages.elasticsearch.org/logstash/1.5/debian stable main' | t
 apt-get -y update
 apt-get -y install logstash
 
+ln -s /vagrant/logstash/lumberjack-input.conf /etc/logstash/conf.d/01-lumberjack-input.conf
 ln -s /vagrant/logstash/syslog.conf /etc/logstash/conf.d/10-syslog.conf
 ln -s /vagrant/logstash/apache-access.conf /etc/logstash/conf.d/20-apache-access.conf
+ln -s /vagrant/logstash/lumberjack-output.conf /etc/logstash/conf.d/99-lumberjack-output.conf
+
+mkdir -p /etc/pki/tls/certs /etc/pki/tls/private
+
+sed -i "225i\\
+subjectAltName = IP: 192.168.50.120" /etc/ssl/openssl.cnf
+
+cd /etc/pki/tls
+openssl req -config /etc/ssl/openssl.cnf -x509 -days 3650 -batch -nodes -newkey rsa:2048 -keyout private/logstash-forwarder.key -out certs/logstash-forwarder.crt
+
 service logstash restart
 update-rc.d logstash defaults 97 8
